@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JobHub.ai — AI Resume Analyzer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#15151a;
+    --paper:#faf9f7;
+    --card:#ffffff;
+    --orange:#f4622e;
+    --orange-dark:#d94e1e;
+    --green:#0ea96b;
+    --green-bg:#e7f7ef;
+    --line:#e8e5df;
+    --muted:#6b6963;
+    --amber:#e0a100;
+    --red:#e0472c;
+    --shadow: 0 1px 2px rgba(21,21,26,0.04), 0 8px 24px rgba(21,21,26,0.06);
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Inter',system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3{font-family:'Sora',system-ui,sans-serif; margin:0;}
+  .mono{font-family:'IBM Plex Mono',monospace;}
+  a{color:inherit;}
+
+  /* ---------- header ---------- */
+  header{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:18px 32px;
+    background:var(--paper);
+    border-bottom:1px solid var(--line);
+    position:sticky; top:0; z-index:20;
+  }
+  .brand{display:flex; align-items:center; gap:12px;}
+  .logo-icon{
+    width:42px; height:42px; border-radius:12px;
+    background:var(--ink);
+    display:flex; align-items:center; justify-content:center;
+    flex-shrink:0;
+  }
+  .brand-name{font-family:'Sora'; font-weight:700; font-size:22px; letter-spacing:-0.02em;}
+  .brand-name .dot-ai{color:var(--orange);}
+  .avatar{
+    width:38px; height:38px; border-radius:50%;
+    background:var(--orange);
+    color:#fff; font-family:'Sora'; font-weight:700; font-size:15px;
+    display:flex; align-items:center; justify-content:center;
+    flex-shrink:0;
+  }
+
+  /* ---------- hero ---------- */
+  .hero{
+    max-width:760px; margin:0 auto;
+    padding:72px 24px 40px;
+    text-align:center;
+  }
+  .badge{
+    display:inline-flex; align-items:center; gap:8px;
+    padding:8px 18px;
+    background:var(--green-bg);
+    border:1px solid rgba(14,169,107,0.25);
+    border-radius:999px;
+    color:var(--green);
+    font-size:12px; font-weight:600; letter-spacing:0.14em;
+    margin-bottom:28px;
+  }
+  .hero h1{
+    font-size:56px; font-weight:800; letter-spacing:-0.03em; line-height:1.05;
+    margin-bottom:20px;
+  }
+  .hero p.sub{
+    font-size:18px; color:var(--muted); line-height:1.55; margin:0 auto;
+    max-width:520px;
+  }
+
+  /* ---------- uploader ---------- */
+  .uploader{
+    max-width:640px; margin:44px auto 0;
+    padding:0 24px;
+  }
+  .dropzone{
+    border:2px dashed var(--line);
+    border-radius:18px;
+    background:var(--card);
+    padding:40px 28px;
+    text-align:center;
+    cursor:pointer;
+    transition:border-color .15s ease, background .15s ease;
+  }
+  .dropzone:hover, .dropzone.drag{
+    border-color:var(--orange);
+    background:#fff8f5;
+  }
+  .dropzone svg{margin-bottom:14px;}
+  .dropzone .dz-title{font-weight:600; font-size:16px; margin-bottom:4px;}
+  .dropzone .dz-sub{color:var(--muted); font-size:13px;}
+  .dropzone .dz-file{
+    display:none; align-items:center; justify-content:center; gap:10px;
+    font-weight:600; color:var(--green);
+  }
+  .dropzone.has-file .dz-empty{display:none;}
+  .dropzone.has-file .dz-file{display:flex;}
+
+  .paste-toggle{
+    text-align:center; margin-top:14px;
+  }
+  .paste-toggle button{
+    background:none; border:none; color:var(--muted);
+    font-size:13px; text-decoration:underline; cursor:pointer; font-family:inherit;
+  }
+  textarea#pasteArea{
+    display:none;
+    width:100%; margin-top:14px;
+    min-height:160px;
+    border:1px solid var(--line); border-radius:14px;
+    padding:16px; font-family:'Inter'; font-size:14px; color:var(--ink);
+    background:var(--card); resize:vertical;
+  }
+  textarea#pasteArea:focus{outline:2px solid var(--orange); outline-offset:2px;}
+
+  .analyze-row{
+    display:flex; flex-direction:column; align-items:center; gap:12px;
+    margin-top:20px;
+  }
+  .btn-primary{
+    background:var(--orange); color:#fff; border:none;
+    font-family:'Sora'; font-weight:700; font-size:16px;
+    padding:15px 34px; border-radius:12px; cursor:pointer;
+    transition:background .15s ease, transform .1s ease;
+  }
+  .btn-primary:hover:not(:disabled){background:var(--orange-dark);}
+  .btn-primary:active:not(:disabled){transform:scale(0.98);}
+  .btn-primary:disabled{opacity:0.55; cursor:not-allowed;}
+  .status-msg{font-size:13px; color:var(--muted); min-height:18px;}
+  .status-msg.error{color:var(--red);}
+  input[type=file]{display:none;}
+
+  /* ---------- process strip ---------- */
+  .process{
+    max-width:900px; margin:88px auto 0; padding:0 24px;
+    display:grid; grid-template-columns:repeat(3,1fr); gap:28px;
+  }
+  .step{padding:0 8px;}
+  .step .num{
+    font-family:'IBM Plex Mono'; font-weight:600; font-size:12px;
+    color:var(--orange); letter-spacing:0.08em; margin-bottom:10px;
+  }
+  .step h3{font-size:17px; font-weight:700; margin-bottom:6px;}
+  .step p{font-size:14px; color:var(--muted); line-height:1.5; margin:0;}
+
+  /* ---------- results ---------- */
+  #results{
+    max-width:900px; margin:0 auto; padding:0 24px 100px;
+    display:none;
+  }
+  #results.show{display:block;}
+  .results-inner{
+    margin-top:64px; padding-top:56px; border-top:1px solid var(--line);
+  }
+  .score-block{
+    display:flex; align-items:center; gap:40px;
+    background:var(--card); border:1px solid var(--line); border-radius:20px;
+    padding:36px; box-shadow:var(--shadow);
+    flex-wrap:wrap;
+  }
+  .gauge-wrap{position:relative; width:172px; height:172px; flex-shrink:0;}
+  .gauge-wrap svg{transform:rotate(-90deg);}
+  .gauge-center{
+    position:absolute; inset:0; display:flex; flex-direction:column;
+    align-items:center; justify-content:center;
+  }
+  .gauge-score{font-family:'Sora'; font-weight:800; font-size:40px; line-height:1;}
+  .gauge-max{font-size:12px; color:var(--muted); font-family:'IBM Plex Mono';}
+  .score-meta{flex:1; min-width:220px;}
+  .score-tier{
+    display:inline-block; font-family:'IBM Plex Mono'; font-size:11px; font-weight:600;
+    letter-spacing:0.08em; padding:5px 12px; border-radius:999px; margin-bottom:12px;
+  }
+  .score-summary{font-size:16px; line-height:1.55; color:var(--ink);}
+
+  .cols{
+    display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-top:24px;
+  }
+  .panel{
+    background:var(--card); border:1px solid var(--line); border-radius:18px;
+    padding:26px;
+  }
+  .panel h3{font-size:15px; margin-bottom:16px; display:flex; align-items:center; gap:8px;}
+  .panel ul{margin:0; padding:0; list-style:none;}
+  .panel li{
+    font-size:14px; line-height:1.5; color:var(--ink);
+    padding-left:22px; position:relative; margin-bottom:12px;
+  }
+  .panel li:last-child{margin-bottom:0;}
+  .panel.strengths li::before{content:"✓"; position:absolute; left:0; color:var(--green); font-weight:700;}
+  .panel.improve li::before{content:"→"; position:absolute; left:0; color:var(--orange); font-weight:700;}
+
+  .skills-panel{margin-top:24px;}
+  .chips{display:flex; flex-wrap:wrap; gap:10px; margin-top:16px;}
+  .chip{
+    background:var(--green-bg); color:var(--green); border:1px solid rgba(14,169,107,0.25);
+    padding:8px 16px; border-radius:999px; font-size:13px; font-weight:600;
+  }
+
+  .roles-panel{margin-top:24px;}
+  .role-card{
+    display:flex; align-items:center; justify-content:space-between; gap:16px;
+    padding:16px 0; border-bottom:1px solid var(--line);
+  }
+  .role-card:last-child{border-bottom:none;}
+  .role-info{flex:1;}
+  .role-title{font-weight:700; font-size:15px; margin-bottom:3px;}
+  .role-reason{font-size:13px; color:var(--muted); line-height:1.4;}
+  .role-match{
+    font-family:'IBM Plex Mono'; font-weight:600; font-size:14px; color:var(--orange);
+    white-space:nowrap;
+  }
+
+  .reset-row{text-align:center; margin-top:36px;}
+  .btn-ghost{
+    background:none; border:1px solid var(--line); color:var(--ink);
+    font-family:'Sora'; font-weight:600; font-size:14px;
+    padding:11px 24px; border-radius:10px; cursor:pointer;
+  }
+  .btn-ghost:hover{border-color:var(--ink);}
+
+  footer{
+    text-align:center; padding:32px 24px; color:var(--muted); font-size:13px;
+    border-top:1px solid var(--line);
+  }
+
+  @media (max-width:640px){
+    header{padding:16px 20px;}
+    .hero{padding:48px 20px 28px;}
+    .hero h1{font-size:36px;}
+    .hero p.sub{font-size:16px;}
+    .process{grid-template-columns:1fr; gap:24px; margin-top:56px;}
+    .cols{grid-template-columns:1fr;}
+    .score-block{flex-direction:column; text-align:center;}
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    html{scroll-behavior:auto;}
+    .gauge-fg{transition:none !important;}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <div class="logo-icon">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2h3a1 1 0 0 1 1 1v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a1 1 0 0 1 1-1h4zm2-2v2h4V5h-4zM4 13h16" stroke="#faf9f7" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>
+    <div class="brand-name">JobHub<span class="dot-ai">.ai</span></div>
+  </div>
+  <div class="avatar">U</div>
+</header>
+
+<main>
+  <section class="hero">
+    <div class="badge mono">✦ POWERED BY CLAUDE</div>
+    <h1>AI Resume Analyzer</h1>
+    <p class="sub">Get an instant 0–100 score, honest feedback, and the skills to learn next — matched to real job roles.</p>
+
+    <div class="uploader">
+      <div class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="Upload resume file">
+        <input type="file" id="fileInput" accept=".pdf,.txt,.md">
+        <div class="dz-empty">
+          <svg width="30" height="30" viewBox="0 0 24 24" fill="none"><path d="M12 3v12m0-12 4 4m-4-4-4 4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" stroke="#f4622e" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <div class="dz-title">Drag your resume here, or click to browse</div>
+          <div class="dz-sub">PDF or TXT · nothing is stored, it's only used for this analysis</div>
+        </div>
+        <div class="dz-file">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="#0ea96b" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span id="fileName"></span>
+        </div>
+      </div>
+      <div class="paste-toggle"><button id="pasteToggle" type="button">or paste your resume text instead</button></div>
+      <textarea id="pasteArea" placeholder="Paste your resume text here..."></textarea>
+
+      <div class="analyze-row">
+        <button class="btn-primary" id="analyzeBtn">Analyze My Resume</button>
+        <div class="status-msg" id="statusMsg"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="process">
+    <div class="step">
+      <div class="num mono">01 · UPLOAD</div>
+      <h3>Add your resume</h3>
+      <p>Drop a PDF, or paste your resume as plain text. Nothing leaves your browser except the text sent for analysis.</p>
+    </div>
+    <div class="step">
+      <div class="num mono">02 · ANALYZE</div>
+      <h3>Claude reads it</h3>
+      <p>In a few seconds you get a score, a summary, and a clear breakdown of strengths and gaps.</p>
+    </div>
+    <div class="step">
+      <div class="num mono">03 · IMPROVE</div>
+      <h3>Know what's next</h3>
+      <p>See exactly which skills to learn and which roles you're already a strong match for.</p>
+    </div>
+  </section>
+
+  <section id="results">
+    <div class="results-inner">
+      <div class="score-block">
+        <div class="gauge-wrap">
+          <svg width="172" height="172" viewBox="0 0 172 172">
+            <circle cx="86" cy="86" r="72" fill="none" stroke="#e8e5df" stroke-width="14"/>
+            <circle class="gauge-fg" cx="86" cy="86" r="72" fill="none" stroke="#f4622e" stroke-width="14"
+              stroke-linecap="round" stroke-dasharray="452.4" stroke-dashoffset="452.4"
+              style="transition: stroke-dashoffset 1.1s cubic-bezier(.4,0,.2,1), stroke 1.1s ease;"/>
+          </svg>
+          <div class="gauge-center">
+            <div class="gauge-score" id="scoreNum">0</div>
+            <div class="gauge-max mono">/ 100</div>
+          </div>
+        </div>
+        <div class="score-meta">
+          <div class="score-tier mono" id="scoreTier">SCORE</div>
+          <p class="score-summary" id="scoreSummary"></p>
+        </div>
+      </div>
+
+      <div class="cols">
+        <div class="panel strengths">
+          <h3>What's working</h3>
+          <ul id="strengthsList"></ul>
+        </div>
+        <div class="panel improve">
+          <h3>What to fix</h3>
+          <ul id="improveList"></ul>
+        </div>
+      </div>
+
+      <div class="panel skills-panel">
+        <h3>Skills to learn next</h3>
+        <div class="chips" id="skillsChips"></div>
+      </div>
+
+      <div class="panel roles-panel">
+        <h3>Roles you're a fit for</h3>
+        <div id="rolesList"></div>
+      </div>
+
+      <div class="reset-row">
+        <button class="btn-ghost" id="resetBtn">Analyze another resume</button>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  JobHub.ai — an AI resume analysis demo, powered by Claude. Suggested roles are illustrative, not live job listings.
+</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+  // ---------- config ----------
+  // NOTE: the fetch() call below to api.anthropic.com works out-of-the-box inside
+  // Claude.ai's artifact preview. Once this file is deployed elsewhere (e.g. GitHub
+  // Pages), that endpoint will NOT work as-is, because it relies on Claude.ai's
+  // built-in auth for artifacts. To make the AI feature work on a real deployment,
+  // route this fetch through your own backend (e.g. a small serverless function)
+  // that holds your Anthropic API key server-side. Never put a real API key in
+  // client-side code like this file.
+
+  if (window['pdfjsLib']) {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  }
+
+  const dropzone = document.getElementById('dropzone');
+  const fileInput = document.getElementById('fileInput');
+  const fileNameEl = document.getElementById('fileName');
+  const pasteToggle = document.getElementById('pasteToggle');
+  const pasteArea = document.getElementById('pasteArea');
+  const analyzeBtn = document.getElementById('analyzeBtn');
+  const statusMsg = document.getElementById('statusMsg');
+  const resultsSection = document.getElementById('results');
+  const resetBtn = document.getElementById('resetBtn');
+
+  let extractedText = '';
+
+  dropzone.addEventListener('click', () => fileInput.click());
+  dropzone.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') fileInput.click(); });
+  dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('drag'); });
+  dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag'));
+  dropzone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropzone.classList.remove('drag');
+    if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+  });
+  fileInput.addEventListener('change', () => {
+    if (fileInput.files.length) handleFile(fileInput.files[0]);
+  });
+
+  pasteToggle.addEventListener('click', () => {
+    const showing = pasteArea.style.display === 'block';
+    pasteArea.style.display = showing ? 'none' : 'block';
+    pasteToggle.textContent = showing ? 'or paste your resume text instead' : 'hide text box';
+    if (!showing) pasteArea.focus();
+  });
+
+  async function handleFile(file) {
+    setStatus('');
+    try {
+      if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
+        extractedText = await extractPdfText(file);
+      } else {
+        extractedText = await file.text();
+      }
+      if (!extractedText || extractedText.trim().length < 30) {
+        setStatus("Couldn't read enough text from that file — try pasting your resume text instead.", true);
+        extractedText = '';
+        return;
+      }
+      dropzone.classList.add('has-file');
+      fileNameEl.textContent = file.name;
+      pasteArea.value = '';
+    } catch (err) {
+      setStatus("Couldn't read that file — try pasting your resume text instead.", true);
+    }
+  }
+
+  async function extractPdfText(file) {
+    const buf = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+    let text = '';
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const content = await page.getTextContent();
+      text += content.items.map(it => it.str).join(' ') + '\n';
+    }
+    return text;
+  }
+
+  function setStatus(msg, isError) {
+    statusMsg.textContent = msg;
+    statusMsg.classList.toggle('error', !!isError);
+  }
+
+  analyzeBtn.addEventListener('click', async () => {
+    const text = (pasteArea.style.display === 'block' && pasteArea.value.trim())
+      ? pasteArea.value.trim()
+      : extractedText;
+
+    if (!text || text.length < 30) {
+      setStatus('Add a resume file or paste your resume text first.', true);
+      return;
+    }
+
+    analyzeBtn.disabled = true;
+    setStatus('Analyzing your resume…');
+
+    try {
+      const result = await analyzeResume(text.slice(0, 8000));
+      renderResults(result);
+      resultsSection.classList.add('show');
+      resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      setStatus('');
+    } catch (err) {
+      console.error(err);
+      setStatus('Analysis failed. Please try again in a moment.', true);
+    } finally {
+      analyzeBtn.disabled = false;
+    }
+  });
+
+  async function analyzeResume(resumeText) {
+    const prompt = `You are a professional resume reviewer and career coach. Analyze the resume text below and respond with ONLY valid JSON, no markdown fences, no preamble, matching exactly this shape:
+{
+  "score": <integer 0-100>,
+  "tier": "<one of: needs-work, good, strong>",
+  "summary": "<one sentence overall assessment>",
+  "strengths": ["<short strength>", "... 3-4 items"],
+  "improvements": ["<short actionable fix>", "... 3-4 items"],
+  "skillsToLearn": ["<short skill name>", "... 3-5 items"],
+  "matchedRoles": [{"title": "<job title>", "match": <integer 0-100>, "reason": "<one short sentence>"}, "... exactly 3 items"]
+}
+
+Resume:
+"""${resumeText}"""`;
+
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 1000,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+
+    const data = await response.json();
+    const textBlock = (data.content || []).find(b => b.type === 'text');
+    if (!textBlock) throw new Error('No response text');
+    const clean = textBlock.text.replace(/```json|```/g, '').trim();
+    return JSON.parse(clean);
+  }
+
+  function tierColor(tier) {
+    if (tier === 'strong') return { fg: '#0ea96b', bg: '#e7f7ef', label: 'STRONG RESUME' };
+    if (tier === 'good') return { fg: '#e0a100', bg: '#fdf3d9', label: 'GOOD, WITH ROOM TO GROW' };
+    return { fg: '#f4622e', bg: '#fdece4', label: 'NEEDS WORK' };
+  }
+
+  function renderResults(r) {
+    const circumference = 452.4;
+    const offset = circumference - (Math.min(Math.max(r.score, 0), 100) / 100) * circumference;
+    const colors = tierColor(r.tier);
+
+    document.getElementById('scoreNum').textContent = r.score;
+    const fg = document.querySelector('.gauge-fg');
+    fg.style.stroke = colors.fg;
+    requestAnimationFrame(() => { fg.style.strokeDashoffset = offset; });
+
+    const tierEl = document.getElementById('scoreTier');
+    tierEl.textContent = colors.label;
+    tierEl.style.color = colors.fg;
+    tierEl.style.background = colors.bg;
+
+    document.getElementById('scoreSummary').textContent = r.summary || '';
+
+    const strengthsList = document.getElementById('strengthsList');
+    strengthsList.innerHTML = '';
+    (r.strengths || []).forEach(s => {
+      const li = document.createElement('li'); li.textContent = s; strengthsList.appendChild(li);
+    });
+
+    const improveList = document.getElementById('improveList');
+    improveList.innerHTML = '';
+    (r.improvements || []).forEach(s => {
+      const li = document.createElement('li'); li.textContent = s; improveList.appendChild(li);
+    });
+
+    const chips = document.getElementById('skillsChips');
+    chips.innerHTML = '';
+    (r.skillsToLearn || []).forEach(s => {
+      const span = document.createElement('span'); span.className = 'chip'; span.textContent = s; chips.appendChild(span);
+    });
+
+    const roles = document.getElementById('rolesList');
+    roles.innerHTML = '';
+    (r.matchedRoles || []).forEach(role => {
+      const div = document.createElement('div'); div.className = 'role-card';
+      div.innerHTML = `
+        <div class="role-info">
+          <div class="role-title">${escapeHtml(role.title)}</div>
+          <div class="role-reason">${escapeHtml(role.reason)}</div>
+        </div>
+        <div class="role-match mono">${role.match}% match</div>`;
+      roles.appendChild(div);
+    });
+  }
+
+  function escapeHtml(s) {
+    return String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  resetBtn.addEventListener('click', () => {
+    resultsSection.classList.remove('show');
+    extractedText = '';
+    dropzone.classList.remove('has-file');
+    fileInput.value = '';
+    pasteArea.value = '';
+    pasteArea.style.display = 'none';
+    pasteToggle.textContent = 'or paste your resume text instead';
+    setStatus('');
+    document.querySelector('.hero').scrollIntoView({ behavior: 'smooth' });
+  });
+</script>
+</body>
+</html>
